@@ -12,14 +12,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Encontrar a pasta do projeto Android
+        id: find
+        run: |
+          SETTINGS=$(find . -name settings.gradle -not -path "*/.git/*" -not -path "*/build/*" | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "Não achei settings.gradle no repositório. Suba o conteúdo do zip (pasta app, settings.gradle, build.gradle...)."
+            find . -not -path "./.git/*" | head -50
+            exit 1
+          fi
+          DIR=$(dirname "$SETTINGS")
+          echo "Projeto em: $DIR"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
       - name: Baixar a logo da loja (se ainda não estiver no projeto)
         run: |
-          mkdir -p app/src/main/res/drawable-nodpi
-          if [ ! -s app/src/main/res/drawable-nodpi/logo_capivaria.png ]; then
+          DIR="${{ steps.find.outputs.dir }}"
+          mkdir -p "$DIR/app/src/main/res/drawable-nodpi"
+          if [ ! -s "$DIR/app/src/main/res/drawable-nodpi/logo_capivaria.png" ]; then
             curl -fsSL "https://capivariashopbr.store/__l5e/assets-v1/9488f642-2358-468f-93e1-fe1ab185d52e/logo-capivaria.png" \
-              -o app/src/main/res/drawable-nodpi/logo_capivaria.png
+              -o "$DIR/app/src/main/res/drawable-nodpi/logo_capivaria.png"
           fi
-          file app/src/main/res/drawable-nodpi/logo_capivaria.png
+          file "$DIR/app/src/main/res/drawable-nodpi/logo_capivaria.png"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,10 +47,10 @@ jobs:
           gradle-version: 8.7
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
+        run: gradle -p "${{ steps.find.outputs.dir }}" assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: CapivariaShop-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.find.outputs.dir }}/app/build/outputs/apk/debug/app-debug.apk
