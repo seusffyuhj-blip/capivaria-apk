@@ -1,0 +1,42 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Baixar a logo da loja (se ainda não estiver no projeto)
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          if [ ! -s app/src/main/res/drawable-nodpi/logo_capivaria.png ]; then
+            curl -fsSL "https://capivariashopbr.store/__l5e/assets-v1/9488f642-2358-468f-93e1-fe1ab185d52e/logo-capivaria.png" \
+              -o app/src/main/res/drawable-nodpi/logo_capivaria.png
+          fi
+          file app/src/main/res/drawable-nodpi/logo_capivaria.png
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CapivariaShop-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
